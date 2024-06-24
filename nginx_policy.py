@@ -1,35 +1,46 @@
 import crossplane
+from result import Result,Level 
 import json
 
-necessaryDirectives = ['proxy_ssl_certificate','proxy_ssl_certificate_key','proxy_ssl_verify']
+necessaryLocationDirectives = ['proxy_ssl_certificate','proxy_ssl_certificate_key','proxy_ssl_verify']
+necessaryHttpHeaders= { 'X-XSS-Protection': ['0'], 'Strict-Transport-Security':[ 'max-age=63072000;', 'includeSubDomains;', 'preload']}
 
-def checkServerDirective(serverJsonStr):
-
-    json_object = jsonify(serverJsonStr)
-    #prettify(serverJsonStr)
+def checkServerDirective(serverJsonStr,path):
 
     for block in serverJsonStr['block']:
         if(block['directive'] == "location"):
             checkLocationDirective(block)
 
 
-def checkLocationDirective(locationJsonObj):
+def checkLocationDirective(locationJsonObj,path):
+    output = []
+    
     directives = []
-    prettify(locationJsonObj)
+    #prettify(locationJsonObj)
     for block in locationJsonObj['block']:
         directives.append(block['directive'])
-    
-    print("Directives :")
-    print(directives)
+        if (block['directive'] == 'proxy_pass'):
+            upstreamAdd = block['args'][0]
+            if(startWithDollar(upstreamAdd) and (not startWithHttp(upstreamAdd)) ):
+                result = f'{upstreamAdd} is upstream adress'
+                output.append(Result(result,Level.INFO,path))
+            elif((not startWithDollar(upstreamAdd)) and (not startWithHttp(upstreamAdd)) ):
+                result = f' upstream adress doesn\'t start with http protocol or don\'t start any upstream definition : {upstreamAdd} '
+                output.append(Result(result,Level.WARNING,path))
 
-    print("Control Result :")
-    i = 0 
-    for directive in necessaryDirectives:
+    for directive in necessaryLocationDirectives:
         if directive not in directives:
-            i=i+1
-            result = f'{i} {directive} is not exist in'
-            print(result)
+            result = f'{directive} is not exist in'
+            output.append(Result(result,Level.ERROR,path))
+            
+        
+    return output
 
+def startWithDollar(upstream):
+    return upstream.startswith('$') 
+    
+def startWithHttp(upstream):
+    return (upstream.startswith('https://') or upstream.startswith('http://'))
     
 def checkUpstreamDirective(serverJsonObj):
     prettify(serverJsonObj)
@@ -44,18 +55,24 @@ def jsonify(jsonStr):
 
 if __name__ == "__main__":
 
-    payload = crossplane.parse('D:/Develop/PYTHON/nginx.conf')
+    payload = crossplane.parse('D:/Develop/PYTHON/nginx-policy/nginx.conf')
     results = json.dumps(payload,indent=2)
-
-    #print(results)  
 
     json_object = json.loads(results)
 
     ## check main conf file and included conf files
+
     for conf in json_object['config']:
+        path = conf['file']
         for directive in conf['parsed']:    
             if(directive['directive'] == "server"):
-                checkServerDirective(directive)
+                checkServerDirective(directive,path)
+
             if(directive['directive'] == "location"):
-                checkLocationDirective(directive)
+                output = checkLocationDirective(directive,path)
+                for i in output:
+                    j_data = json.dumps(i.__dict__,indent=4)
+                    print(j_data)
+
+
 
