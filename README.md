@@ -7,7 +7,8 @@ Crossplane
 
 crossplane don't partially parse nginx configurations. 
 
-
+proxy SSL certificates and keys are taken from :
+https://github.com/DanielDent/docker-nginx-ssl-proxy
 
     
 
