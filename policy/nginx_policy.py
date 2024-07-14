@@ -55,7 +55,7 @@ def jsonify(jsonStr):
 
 if __name__ == "__main__":
 
-    payload = crossplane.parse('D:/Develop/PYTHON/nginx-policy/nginx.conf')
+    payload = crossplane.parse('D:/Develop/PYTHON/nginx-policy/nginx-conf-demo-output/nginx.conf')
     results = json.dumps(payload,indent=2)
 
     json_object = json.loads(results)
